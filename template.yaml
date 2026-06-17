@@ -1,80 +1,78 @@
 template:
-  # --- METADATA (MANDATORY) ---
-  name: "reference-app-template"
-  display_name: "Reference App Template"
-  description: "Basis-Template für CloudStore Apps. Enthält alle Input-Typen und Validierungsregeln."
+  # --- METADATA ---
+  name: "drawio-server"
+  display_name: "Draw.io Diagram Server"
+  description: "Self-hosted Draw.io (diagrams.net) für kollaborative Diagramme — UML, Flowcharts, ER-Modelle. Läuft als Docker-Container, kein Login nötig."
   version: "1.0.0"
   category: "education"
-  author: "CloudStore Team"
-  icon: "icon.png"
+  author: "DHBW CloudStore Team"
+  icon: drawio.png
 
   terraform:
     working_dir: terraform/
     required_version: ">= 1.6.0"
 
-  # --- INPUT PARAMETERS (REFERENCE) ---
-  # Entwickler können diese Sektion anpassen, müssen aber die
-  # Validierungs-Logik in variables.tf übernehmen.
+  tags:
+    - drawio
+    - diagrams
+    - whiteboard
+    - education
+
   parameters:
-  #MANDATORY
-    # 1. STRING (Text mit Regex) (MANDATORY)
+    # --- Allgemein ---
     - name: app_name
       type: string
-      description: "Name der Anwendung (nur Kleinbuchstaben)"
+      description: "Name der Drawio-Instanz (z.B. wwi23sea-drawio)"
       required: true
       validation:
         pattern: "^[a-z0-9-]{3,20}$"
-  #OPTIONAL
-    # 2. SELECTION (Dropdown)
-    - name: environment
+      x-ui:
+        group: "Allgemein"
+        order: 1
+        icon: Server
+        placeholder: "z.B. wwi23sea-drawio"
+        hint: "Nur Kleinbuchstaben, Zahlen und Bindestriche (3-20 Zeichen)"
+
+    # --- Ressourcen ---
+    - name: flavor_name
       type: selection
-      description: "Deployment Umgebung"
+      description: "Ressourcen (Quota)"
       required: true
-      default: "dev"
       options:
-        - label: "Development"
-          value: "dev"
-        - label: "Production"
-          value: "prod"
+        - label: "Small (1 CPU, 2GB RAM) — Empfohlen"
+          value: "gp1.small"
+        - label: "Medium (2 CPU, 4GB RAM)"
+          value: "gp1.medium"
+      default: "gp1.small"
 
-    # 3. ARRAY (Liste von Strings)
-    - name: admin_emails
-      type: array
-      description: "Liste der Admin E-Mails"
-      required: true
-      validation:
-        min_items: 1
-        max_items: 5
-
-    # 4. BOOLEAN (Checkbox)
-    - name: enable_backup
-      type: boolean
-      description: "Backups aktivieren?"
-      default: false
-      required: false
-
-    # 5. NUMBER (Zahl)
-    - name: disk_size_gb
-      type: number
-      description: "Größe der Festplatte (GB)"
-      default: 10
-      required: true
-      validation:
-        min: 10
-        max: 100
-
-  # --- OUTPUTS (CONTRACT) ---
   outputs:
-    # SYSTEM PFLICHTFELD: Wird vom Backend zur Verwaltung benötigt
+    # SYSTEM PFLICHTFELDER (Hidden)
     - name: instance_id
-      description: "System ID der Haupt-Instanz"
+      description: "System ID der Instanz"
       display: false
-    
+
     - name: app_name
       description: "Name der Anwendung"
       display: true
 
-    # OPTIONAL: Beispiele für Nutzer-Outputs
-    - name: access_ip
-      description: "Zugriffs-IP"
+    # USER OUTPUTS
+    - name: drawio_url
+      description: "Draw.io Web-Oberfläche"
       display: true
+
+    - name: ssh_command
+      description: "SSH-Zugang zur VM"
+      display: true
+
+    - name: ssh_private_key
+      description: "SSH Private Key"
+      sensitive: true
+      display: false
+
+  estimated_costs:
+    hourly: "0.05 - 0.10 EUR"
+    monthly: "40 - 75 EUR"
+
+  requirements:
+    - "SSH Port 22"
+    - "HTTP Port 8080 (Draw.io Web UI)"

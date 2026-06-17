@@ -1,16 +1,69 @@
 #cloud-config
+
+# Draw.io Server Setup
+# Installiert Docker und startet den offiziellen jgraph/drawio Container.
+
+package_update: true
+package_upgrade: false
+
+bootcmd:
+  - mkdir -p /opt/cloudstore /etc/cloudstore
+
+packages:
+  - curl
+  - ca-certificates
+  - ufw
+
 write_files:
-  - path: /etc/cloudstore_app_config.info
+  - path: /etc/cloudstore/drawio_info.txt
     permissions: '0644'
     content: |
-      This file demonstrates that variables were passed correctly.
-      ----------------------------------------------------------
-      App Name:     ${app_name}
-      Environment:  ${environment}
-      Admins:       ${admins}
-      Backup Mode:  ${backup}
-      Disk Size:    ${disk} GB
-      ----------------------------------------------------------
+      CloudStore Draw.io Deployment
+      =============================
+      App:       ${app_name}
+      URL:       http://${floating_ip}:8080
+
+  # Systemd-Unit: startet den Drawio Docker-Container automatisch
+  - path: /etc/systemd/system/cloudstore-drawio.service
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=CloudStore Draw.io Container
+      Requires=docker.service
+      After=docker.service
+
+      [Service]
+      Type=simple
+      Restart=always
+      RestartSec=10
+      ExecStartPre=-/usr/bin/docker stop drawio
+      ExecStartPre=-/usr/bin/docker rm drawio
+      ExecStartPre=/usr/bin/docker pull jgraph/drawio:latest
+      ExecStart=/usr/bin/docker run --rm --name drawio -p 8080:8080 jgraph/drawio:latest
+      ExecStop=/usr/bin/docker stop drawio
+      StandardOutput=journal
+      StandardError=journal
+
+      [Install]
+      WantedBy=multi-user.target
 
 runcmd:
-  - echo "CloudStore Reference App initialized."
+  # UFW Firewall
+  - ufw --force enable
+  - ufw allow 22/tcp
+  - ufw allow 8080/tcp
+
+  # Docker installieren (offizielles Convenience-Skript)
+  - curl -fsSL https://get.docker.com | sh
+  - systemctl enable docker
+  - systemctl start docker
+
+  # Drawio-Service aktivieren und starten
+  - systemctl daemon-reload
+  - systemctl enable cloudstore-drawio.service
+  - systemctl start cloudstore-drawio.service
+
+final_message: |
+  Draw.io wurde installiert.
+  App: ${app_name}
+  URL: http://${floating_ip}:8080
