@@ -40,21 +40,24 @@ Es gibt kein `one-per-user` — das wäre Verschwendung, weil Draw.io zustandslo
 
 ## Setup-Ablauf (cloud-init)
 
-1. Ubuntu 22.04 + Pakete (`curl`, `ca-certificates`, `ufw`)
-2. UFW: Ports 22, 8080
+1. Ubuntu 22.04 + Pakete (`curl`, `ca-certificates`, `ufw`, `nginx`, `openssl`)
+2. UFW: Ports 22, 80, 443
 3. Docker installieren (via offiziellem `get.docker.com`-Skript)
 4. **Systemd-Service** `cloudstore-drawio.service`:
    - Pullt `jgraph/drawio:latest`
-   - Startet Container mit Port-Mapping `8080:8080`
+   - Startet Container mit Port-Binding **nur lokal** (`127.0.0.1:8080`)
    - Restart-Policy `always`
+5. Self-Signed SSL-Zertifikat (`openssl req -x509`, 365 Tage gültig)
+6. Nginx als Reverse-Proxy: 80 → 301 Redirect auf 443, 443 → Docker-Container auf 127.0.0.1:8080
 
 ## Zugriff
 
 ### Studierende
 
-1. Browser öffnen: `drawio_url` (`http://<floating-ip>:8080`)
-2. Sofort losarbeiten — kein Login
-3. Diagramm speichern:
+1. Browser öffnen: `drawio_url` (`https://<floating-ip>`)
+2. **Self-Signed Cert akzeptieren** (Browser-Warnung wegklicken — Cert wird nicht von einer offiziellen CA signiert)
+3. Sofort losarbeiten — kein Login
+4. Diagramm speichern:
    - **Lokal im Browser:** Draw.io speichert in LocalStorage des aktuellen Browsers
    - **Als Datei exportieren:** File → Export → PNG, SVG, XML, PDF
    - **Lokal auf eigenem Computer:** File → Save → "Device" wählen
@@ -81,12 +84,14 @@ sudo docker logs drawio
 | Port | Zweck |
 |---|---|
 | 22 | SSH (Admin via Key) |
-| 8080 | Draw.io Web UI (HTTP) |
+| 80 | HTTP → 301 Redirect auf HTTPS |
+| 443 | HTTPS (Draw.io via Nginx + Self-Signed Cert) |
 
-HTTPS ist nicht konfiguriert. Für Produktiv-Setups Reverse-Proxy (nginx) vorschalten.
+Der Draw.io-Container selbst bindet **nur auf 127.0.0.1:8080** — direkt von außen nicht erreichbar, nur über den Nginx-Proxy.
 
 ## Hinweise
 
+- **Self-Signed Zertifikat:** Browser warnt beim ersten Aufruf ("Verbindung nicht sicher"). Cert ist 365 Tage gültig. Für Produktiv-Setups Let's Encrypt einrichten (DNS-Hostname nötig).
 - **Keine serverseitige Speicherung:** Diagramme leben nur im Browser des Studierenden oder als exportierte Dateien. Bei VM-Destroy gehen **keine** Daten verloren (es gibt keine).
 - **Kollaboratives Editieren:** Draw.io selbst-gehostet unterstützt **kein Echtzeit-Co-Editing** wie die SaaS-Version. Für Gruppenarbeit: Eine Person bearbeitet, exportiert XML, teilt mit anderen.
 - **Persistente Diagramme:** Studierende sollten regelmäßig File → Save (Device) oder Export, damit Diagramme nicht beim Browser-Cache-Leeren verloren gehen.

@@ -63,7 +63,7 @@ resource "openstack_compute_keypair_v2" "drawio_keypair" {
 resource "openstack_networking_secgroup_v2" "drawio_access" {
   count       = var.use_mock_provider ? 0 : 1
   name        = "drawio-access-${var.deployment_id}"
-  description = "Drawio: SSH + HTTP 8080"
+  description = "Drawio: SSH + HTTPS"
 }
 
 resource "openstack_networking_secgroup_rule_v2" "ssh_ingress" {
@@ -82,8 +82,19 @@ resource "openstack_networking_secgroup_rule_v2" "http_ingress" {
   direction         = "ingress"
   ethertype         = "IPv4"
   protocol          = "tcp"
-  port_range_min    = 8080
-  port_range_max    = 8080
+  port_range_min    = 80
+  port_range_max    = 80
+  remote_ip_prefix  = "0.0.0.0/0"
+  security_group_id = openstack_networking_secgroup_v2.drawio_access[0].id
+}
+
+resource "openstack_networking_secgroup_rule_v2" "https_ingress" {
+  count             = var.use_mock_provider ? 0 : 1
+  direction         = "ingress"
+  ethertype         = "IPv4"
+  protocol          = "tcp"
+  port_range_min    = 443
+  port_range_max    = 443
   remote_ip_prefix  = "0.0.0.0/0"
   security_group_id = openstack_networking_secgroup_v2.drawio_access[0].id
 }
