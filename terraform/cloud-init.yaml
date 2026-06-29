@@ -1,7 +1,8 @@
 #cloud-config
 
 # Draw.io Server Setup
-# Installiert Docker und startet den offiziellen jgraph/drawio Container.
+# Installiert Docker, startet den offiziellen jgraph/drawio Container
+# und stellt ihn via nginx + Self-Signed HTTPS bereit.
 
 package_update: true
 package_upgrade: false
@@ -13,6 +14,8 @@ packages:
   - curl
   - ca-certificates
   - ufw
+  - nginx
+  - openssl
 
 write_files:
   - path: /etc/cloudstore/drawio_info.txt
@@ -21,7 +24,7 @@ write_files:
       CloudStore Draw.io Deployment
       =============================
       App:       ${app_name}
-      URL:       http://${floating_ip}:8080
+      URL:       https://${floating_ip}
 
   # Systemd-Unit: startet den Drawio Docker-Container automatisch
   - path: /etc/systemd/system/cloudstore-drawio.service
@@ -39,7 +42,7 @@ write_files:
       ExecStartPre=-/usr/bin/docker stop drawio
       ExecStartPre=-/usr/bin/docker rm drawio
       ExecStartPre=/usr/bin/docker pull jgraph/drawio:latest
-      ExecStart=/usr/bin/docker run --rm --name drawio -p 8080:8080 jgraph/drawio:latest
+      ExecStart=/usr/bin/docker run --rm --name drawio -p 127.0.0.1:8080:8080 jgraph/drawio:latest
       ExecStop=/usr/bin/docker stop drawio
       StandardOutput=journal
       StandardError=journal
@@ -47,11 +50,47 @@ write_files:
       [Install]
       WantedBy=multi-user.target
 
+  # Nginx Reverse-Proxy mit Self-Signed HTTPS
+  - path: /etc/nginx/sites-available/drawio
+    permissions: '0644'
+    content: |
+      server {
+        listen 80;
+        server_name _;
+        return 301 https://$host$request_uri;
+      }
+
+      server {
+        listen 443 ssl http2;
+        server_name _;
+
+        ssl_certificate     /etc/ssl/certs/drawio-selfsigned.crt;
+        ssl_certificate_key /etc/ssl/private/drawio-selfsigned.key;
+
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_ciphers HIGH:!aNULL:!MD5;
+        client_max_body_size 50M;
+
+        location / {
+          proxy_pass http://127.0.0.1:8080;
+          proxy_set_header Host              $host;
+          proxy_set_header X-Real-IP         $remote_addr;
+          proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+
+          proxy_http_version 1.1;
+          proxy_set_header Upgrade    $http_upgrade;
+          proxy_set_header Connection "upgrade";
+          proxy_read_timeout 86400;
+        }
+      }
+
 runcmd:
   # UFW Firewall
   - ufw --force enable
   - ufw allow 22/tcp
-  - ufw allow 8080/tcp
+  - ufw allow 80/tcp
+  - ufw allow 443/tcp
 
   # Docker installieren (offizielles Convenience-Skript)
   - curl -fsSL https://get.docker.com | sh
@@ -63,7 +102,17 @@ runcmd:
   - systemctl enable cloudstore-drawio.service
   - systemctl start cloudstore-drawio.service
 
+  # Self-Signed Zertifikat
+  - openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/private/drawio-selfsigned.key -out /etc/ssl/certs/drawio-selfsigned.crt -subj "/C=DE/ST=BW/L=Mannheim/O=DHBW/CN=drawio"
+
+  # Nginx-Konfiguration aktivieren
+  - ln -sf /etc/nginx/sites-available/drawio /etc/nginx/sites-enabled/
+  - rm -f /etc/nginx/sites-enabled/default
+  - nginx -t
+  - systemctl restart nginx
+  - systemctl enable nginx
+
 final_message: |
   Draw.io wurde installiert.
   App: ${app_name}
-  URL: http://${floating_ip}:8080
+  URL: https://${floating_ip}

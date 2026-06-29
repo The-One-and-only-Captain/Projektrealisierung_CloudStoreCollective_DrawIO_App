@@ -31,6 +31,14 @@ variable "app_name" {
   }
 }
 
+# Vom Frontend bei one-per-group mitgeschickt — wird hier nicht verwendet
+# (DrawIO hat keinen Login), Variable existiert nur damit Terraform die tfvars akzeptiert.
+variable "student_groups" {
+  type        = map(list(string))
+  description = "Projektgruppen (nur bei one-per-group relevant, wird nicht verwendet)"
+  default     = {}
+}
+
 variable "flavor_name" {
   type        = string
   description = "OpenStack Flavor (VM-Größe)"

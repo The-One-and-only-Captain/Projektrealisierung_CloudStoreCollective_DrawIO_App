@@ -18,8 +18,8 @@ output "app_name" {
 # ==============================================================================
 
 output "drawio_url" {
-  description = "Draw.io Web-Oberfläche"
-  value       = var.use_mock_provider ? "http://mock-ip:8080" : "http://${openstack_networking_floatingip_v2.drawio_fip[0].address}:8080"
+  description = "Draw.io Web-Oberfläche (HTTPS, Self-Signed)"
+  value       = var.use_mock_provider ? "https://mock-ip" : "https://${openstack_networking_floatingip_v2.drawio_fip[0].address}"
 }
 
 output "ssh_command" {
