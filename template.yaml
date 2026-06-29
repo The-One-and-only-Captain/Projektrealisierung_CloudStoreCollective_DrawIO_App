@@ -21,7 +21,6 @@ email_credentials:
 
 deploy-strategy:
   one-instance: true
-  one-per-group: true
 
 ui-groups:
   - id: general
@@ -46,19 +45,6 @@ parameters:
         icon: Server
         placeholder: "z.B. wwi23sea-drawio"
         hint: "Nur Kleinbuchstaben, Zahlen und Bindestriche (3-20 Zeichen)"
-
-    - name: student_groups
-      type: groups
-      required: false
-      description: "Projektgruppen (bei one-per-group: eine Draw.io-Instanz je Gruppe)"
-      x-ui:
-        group_id: general
-        in_group_order: 2
-        icon: Users
-        hint: "Nur befüllen, wenn pro Gruppe ein eigener Diagramm-Server entstehen soll. → Strategie 'one-per-group' im nächsten Schritt. Leer lassen für eine geteilte Instanz."
-        widget:
-          type: group-builder
-          extract: email
 
   specific:
     - name: flavor_name
