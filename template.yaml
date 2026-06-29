@@ -1,78 +1,100 @@
-template:
-  # --- METADATA ---
-  name: "drawio-server"
-  display_name: "Draw.io Diagram Server"
-  description: "Self-hosted Draw.io (diagrams.net) für kollaborative Diagramme — UML, Flowcharts, ER-Modelle. Läuft als Docker-Container, kein Login nötig."
-  version: "1.0.0"
-  category: "education"
-  author: "DHBW CloudStore Team"
-  icon: drawio.png
+name: drawio-server
+display_name: "Draw.io Diagram Server"
+description: "Self-hosted Draw.io (diagrams.net) für kollaborative Diagramme — UML, Flowcharts, ER-Modelle. Läuft als Docker-Container, kein Login nötig."
+version: "2.0.0"
+category: "education"
+author: "DHBW CloudStore Team"
+icon: drawio.png
 
-  terraform:
-    working_dir: terraform/
-    required_version: ">= 1.6.0"
+terraform:
+  working_dir: terraform/
+  required_version: ">= 1.6.0"
 
-  tags:
-    - drawio
-    - diagrams
-    - whiteboard
-    - education
+tags:
+  - drawio
+  - diagrams
+  - whiteboard
+  - education
 
-  parameters:
-    # --- Allgemein ---
+email_credentials:
+  enabled: false
+
+deploy-strategy:
+  one-instance: true
+  one-per-group: true
+
+ui-groups:
+  - id: general
+    title: "Allgemein"
+    order: 1
+  - id: resources
+    title: "Ressourcen"
+    order: 2
+
+parameters:
+
+  general:
     - name: app_name
       type: string
-      description: "Name der Drawio-Instanz (z.B. wwi23sea-drawio)"
       required: true
       validation:
         pattern: "^[a-z0-9-]{3,20}$"
+      description: "Name der Draw.io-Instanz"
       x-ui:
-        group: "Allgemein"
-        order: 1
+        group_id: general
+        in_group_order: 1
         icon: Server
         placeholder: "z.B. wwi23sea-drawio"
         hint: "Nur Kleinbuchstaben, Zahlen und Bindestriche (3-20 Zeichen)"
 
-    # --- Ressourcen ---
+    - name: student_groups
+      type: groups
+      required: false
+      description: "Projektgruppen (bei one-per-group: eine Draw.io-Instanz je Gruppe)"
+      x-ui:
+        group_id: general
+        in_group_order: 2
+        icon: Users
+        hint: "Nur befüllen, wenn pro Gruppe ein eigener Diagramm-Server entstehen soll. → Strategie 'one-per-group' im nächsten Schritt. Leer lassen für eine geteilte Instanz."
+        widget:
+          type: group-builder
+          extract: email
+
+  specific:
     - name: flavor_name
       type: selection
-      description: "Ressourcen (Quota)"
       required: true
-      options:
-        - label: "Small (1 CPU, 2GB RAM) — Empfohlen"
-          value: "gp1.small"
-        - label: "Medium (2 CPU, 4GB RAM)"
-          value: "gp1.medium"
       default: "gp1.small"
+      options:
+        - label: "Small (1 CPU, 2 GB RAM) — Empfohlen"
+          value: "gp1.small"
+        - label: "Medium (2 CPU, 4 GB RAM)"
+          value: "gp1.medium"
+      description: "VM-Größe"
+      x-ui:
+        group_id: resources
+        in_group_order: 1
+        icon: Cpu
+        hint: "Draw.io ist sehr genügsam — Small reicht für die meisten Szenarien."
 
-  outputs:
-    # SYSTEM PFLICHTFELDER (Hidden)
-    - name: instance_id
-      description: "System ID der Instanz"
-      display: false
+outputs:
+  - name: instance_id
+    description: "System ID der Instanz"
+    display: false
 
-    - name: app_name
-      description: "Name der Anwendung"
-      display: true
+  - name: app_name
+    description: "Name der Anwendung"
+    display: true
 
-    # USER OUTPUTS
-    - name: drawio_url
-      description: "Draw.io Web-Oberfläche"
-      display: true
+  - name: drawio_url
+    description: "Draw.io Web-Oberfläche"
+    display: true
 
-    - name: ssh_command
-      description: "SSH-Zugang zur VM"
-      display: true
+  - name: ssh_command
+    description: "SSH-Zugang zur VM"
+    display: true
 
-    - name: ssh_private_key
-      description: "SSH Private Key"
-      sensitive: true
-      display: false
-
-  estimated_costs:
-    hourly: "0.05 - 0.10 EUR"
-    monthly: "40 - 75 EUR"
-
-  requirements:
-    - "SSH Port 22"
-    - "HTTP Port 8080 (Draw.io Web UI)"
+  - name: ssh_private_key
+    description: "SSH Private Key"
+    sensitive: true
+    display: false
